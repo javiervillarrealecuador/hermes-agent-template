@@ -20,6 +20,14 @@ mkdir -p /data/.hermes/cron /data/.hermes/sessions /data/.hermes/logs \
          /data/.hermes/workspace /data/.hermes/skins /data/.hermes/plans \
          /data/.hermes/home
 
+# Keep the volume small (it is billed by GB used): drop caches left on it by
+# earlier deploys (HOME=/data) and prune old generated media/logs. Best-effort.
+rm -rf /data/.cache /data/.npm /data/.bun/install/cache 2>/dev/null || true
+PRUNE_DAYS="${VOLUME_PRUNE_DAYS:-7}"
+for d in /data/.hermes/cache/images /data/.hermes/cache/audio /data/.hermes/logs; do
+  [ -d "$d" ] && find "$d" -type f -mtime +"$PRUNE_DAYS" -delete 2>/dev/null || true
+done
+
 # Stamp the install method as "docker" so hermes treats this as an immutable
 # container image, not a pip checkout. hermes's detect_install_method() reads
 # $HERMES_HOME/.install_method FIRST (before any .git / pip fallback). Without

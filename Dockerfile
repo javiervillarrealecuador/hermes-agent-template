@@ -90,6 +90,13 @@ RUN chmod +x /app/start.sh
 ENV HOME=/data
 ENV HERMES_HOME=/data/.hermes
 
+# HOME=/data puts every tool cache (~/.cache, ~/.npm, ~/.bun, uv, browsers) on
+# the billed volume. Send them to ephemeral disk instead; they rebuild on demand.
+ENV XDG_CACHE_HOME=/tmp/cache
+ENV npm_config_cache=/tmp/npm
+ENV UV_CACHE_DIR=/tmp/uv
+ENV PIP_CACHE_DIR=/tmp/pip
+
 # Points hermes at our pre-built TUI bundle. hermes's _make_tui_argv checks
 # HERMES_TUI_DIR first: if dist/entry.js exists there, it skips the npm
 # install/build entirely. This is the official packager path (Nix uses it too)
