@@ -1,4 +1,7 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+# v0.22.x gates every core dependency on python_version >= '3.14' (see its
+# pyproject.toml), so the image MUST ship Python 3.14: on 3.12 uv skips those
+# deps silently and the dashboard dies at boot with ModuleNotFoundError.
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
 
 # Which hermes-agent revision to install. Accepts any git ref the upstream
 # repo publishes — a release tag (recommended for reproducibility) or a
@@ -8,7 +11,7 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 # newest tag (format `vYYYY.M.D`, optionally with a `.PATCH` suffix, e.g.
 # `v2026.5.29.2`) and update the default below. Use `main` only if you accept
 # that every rebuild can pull arbitrary new upstream commits.
-ARG HERMES_REF=v2026.8.31
+ARG HERMES_REF=v0.22.5
 
 # tini = tiny init that we run as PID 1. Without it, hermes's grandchild
 # processes (MCP stdio servers, git, bun, browser daemons spawned by tools)
@@ -39,9 +42,14 @@ RUN apt-get update && \
 # and bricks the session on Anthropic's non-retryable 400. We bake it in.
 # When bumping HERMES_REF, re-check hermes-agent's pyproject.toml [all] and
 # the extras below against the new release's pyproject.toml.
+# --override: browser-harness 0.1.13 hard-pins pillow==12.3.0 while hermes-agent
+# [all]/[vision] pins pillow==13.0.0. Upstream resolves this with [tool.uv]
+# overrides, which `uv pip install` ignores — so we pass the same override
+# explicitly (see /app/uv-overrides.txt).
 RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/hermes-agent.git /opt/hermes-agent && \
     cd /opt/hermes-agent && \
-    uv pip install --system --no-cache -e ".[all,messaging,tts-premium,honcho,bedrock,anthropic,edge-tts,hindsight,vision]" && \
+    uv pip install --system --no-cache --override /app/uv-overrides.txt \
+    -e ".[all,messaging,tts-premium,bedrock,anthropic,edge-tts,vision]" && \
     cd /opt/hermes-agent/web && \
     npm install --silent && \
     npm run build && \
@@ -77,6 +85,7 @@ RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/h
 # editable from /opt/hermes-agent.
 RUN printf 'docker\n' > /opt/hermes-agent/.install_method
 
+COPY uv-overrides.txt /app/uv-overrides.txt
 COPY requirements.txt /app/requirements.txt
 RUN uv pip install --system --no-cache -r /app/requirements.txt
 
