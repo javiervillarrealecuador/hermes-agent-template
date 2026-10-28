@@ -46,6 +46,7 @@ RUN apt-get update && \
 # [all]/[vision] pins pillow==13.0.0. Upstream resolves this with [tool.uv]
 # overrides, which `uv pip install` ignores — so we pass the same override
 # explicitly (see /app/uv-overrides.txt).
+COPY uv-overrides.txt /app/uv-overrides.txt
 RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/hermes-agent.git /opt/hermes-agent && \
     cd /opt/hermes-agent && \
     uv pip install --system --no-cache --override /app/uv-overrides.txt \
@@ -85,7 +86,6 @@ RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/h
 # editable from /opt/hermes-agent.
 RUN printf 'docker\n' > /opt/hermes-agent/.install_method
 
-COPY uv-overrides.txt /app/uv-overrides.txt
 COPY requirements.txt /app/requirements.txt
 RUN uv pip install --system --no-cache -r /app/requirements.txt
 
