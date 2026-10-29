@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Guard: Hermes-downloaded Node binaries need libatomic.so.1. The Dockerfile
+# installs libatomic1, but if the running image lacks it, install it at boot.
+if ! ldconfig -p 2>/dev/null | grep -q 'libatomic\.so\.1'; then
+  (apt-get update -qq && apt-get install -y -qq --no-install-recommends libatomic1) >/dev/null 2>&1 \
+    || echo "[start] WARNING: could not install libatomic1" >&2
+fi
+
 # Mirror dashboard-ref-only's startup: create every directory hermes expects
 # and seed a default config.yaml if the volume is empty. Without these,
 # `hermes dashboard` endpoints that hit logs/, sessions/, cron/, etc. can fail
